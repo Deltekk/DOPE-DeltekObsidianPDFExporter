@@ -1,92 +1,74 @@
-# Obsidian Sample Plugin
+# DOPE – Deltek Obsidian PDF Exporter
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Esporta la nota "index" di una materia e tutte le note che collega in un unico PDF impaginato come un libro, con lo stesso nome dell'index.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Uso
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+Apri la nota index ed esegui il comando **DOPE PDF Exporter: Esporta index in PDF**, oppure fai clic destro sulla nota → **Esporta libro in PDF**. Si apre la finestra "Salva con nome": il PDF viene salvato lì, fuori dal vault.
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
+## Struttura del PDF
 
-## First time developing plugins?
+1. **Copertina**: banner (`banner`, `banner_x`, `banner_y` del plugin Banners) e titolo dell'index.
+2. **Presentazione**: le sezioni informative dell'index (Ricevimento, Materiale, Modalità esame, …).
+3. **Indice**: indice da libro con numeri di pagina, cliccabile.
+4. **Capitoli** del "Programma del corso", nell'ordine dell'index.
+5. **Appendici**: i link isolati fuori da un elenco (es. `[[Domande Sistemi Operativi]]`).
+6. **Esercitazioni**: i gruppi delle sezioni "Esercitazioni"/"Esercizi", sempre dopo i capitoli.
+7. **Citazioni**: la sezione `# Citazioni` dell'index.
 
-Quick starting guide for new plugin devs:
+Il PDF ha anche i segnalibri (capitoli → note), i numeri di pagina e i link interni tra le note esportate.
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Formato dell'index
 
-## Releasing new releases
+Il riferimento è `example/🐧 Sistemi Operativi`:
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+```markdown
+<mark style="...">Programma del corso</mark>:
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Capitolo 1, **"Operating Systems"**:
+- [[Storia dei sistemi operativi]], [[Kernel]]
+- [[SO - Architettura Monolitica|Architettura Monolitica]]
 
-## Adding your plugin to the community plugin list
+<mark style="...">Esercitazioni</mark>:
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+Processi:
+- [[SO - Processi - Esercizio 1]]
 
-## How to use
+[[Domande Sistemi Operativi]]
 
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+# Citazioni
+> [!Quote]
+> ...
 ```
 
-If you have multiple URLs, you can also do:
+- Le sezioni iniziano con una riga `<mark>…</mark>:` o con un titolo markdown.
+- Un capitolo è una riga che termina con `:` seguita da un elenco di link. `Capitolo N, "Titolo"` diventa il capitolo N con quel titolo.
+- Un alias (`[[nota|alias]]`) viene usato come titolo nell'indice.
+- Una nota collegata più volte viene stampata una sola volta; le altre voci dell'indice puntano alla prima.
+- I link a file PDF inseriscono le pagine di quel PDF nella stessa posizione.
+- I link a note inesistenti vengono ignorati e riportati nella console.
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
+## Compatibilità
+
+Le note sono renderizzate da Obsidian come in modalità lettura, quindi Excalidraw, Mermaid, LaTeX (MathJax), callout, Dataview e gli altri plugin che lavorano in modalità lettura funzionano come nell'app. La stampa usa sempre il tema chiaro, anche con il tema scuro attivo.
+
+I disegni Excalidraw mantengono il tema con cui sono salvati: un disegno scuro resta scuro nel PDF.
+
+## Impostazioni
+
+- **Formato pagina**: A3, A4, A5, Letter, Legal.
+- **Scala di stampa**: dimensione del contenuto (predefinita 70%, come l'export nativo).
+- **Ogni nota su una nuova pagina**.
+- **Apri il PDF dopo l'export**.
+
+## Sviluppo
+
+```bash
+npm install
+npm run dev     # build in watch
+npm run build   # type-check + build di produzione
+npm test        # test del parser dell'index e del post-processing PDF
+npm run lint
 ```
 
-## API Documentation
-
-See https://docs.obsidian.md
+Solo desktop: usa la stampa PDF di Electron e `pdf-lib` per indice, segnalibri e unione dei PDF. Nessuna richiesta di rete.

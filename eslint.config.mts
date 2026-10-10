@@ -5,6 +5,7 @@ import { globalIgnores, defineConfig } from 'eslint/config';
 export default defineConfig(
 	globalIgnores([
 		'node_modules',
+		'.test-build',
 		'dist',
 		'esbuild.config.mjs',
 		'version-bump.mjs',
@@ -29,4 +30,9 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		// node:test tracks the promises returned by test() itself.
+		files: ['tests/**/*.ts'],
+		rules: { '@typescript-eslint/no-floating-promises': 'off' },
+	},
 );
