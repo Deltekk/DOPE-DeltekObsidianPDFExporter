@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
+import type { ThemeMode } from './export/theme';
 import type DopePlugin from './main';
 
 export interface DopeSettings {
@@ -7,6 +8,10 @@ export interface DopeSettings {
 	scale: number;
 	noteOnNewPage: boolean;
 	openAfterExport: boolean;
+	/** Last choices of the export dialog. `theme` is unset until the first export (= current theme). */
+	theme?: string;
+	mode: ThemeMode;
+	folder: string;
 }
 
 export const DEFAULT_SETTINGS: DopeSettings = {
@@ -14,6 +19,8 @@ export const DEFAULT_SETTINGS: DopeSettings = {
 	scale: 70,
 	noteOnNewPage: true,
 	openAfterExport: true,
+	mode: 'light',
+	folder: '',
 };
 
 const PAGE_SIZES = ['A3', 'A4', 'A5', 'Letter', 'Legal'];

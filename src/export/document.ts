@@ -21,6 +21,14 @@ export interface BuildContext {
 	parsed: ParsedIndex;
 	plan: ExportPlan;
 	noteOnNewPage: boolean;
+	/** Called after each block (presentation, note, quotes) is rendered. */
+	onRendered: () => void;
+}
+
+/** Number of `onRendered` calls `buildDocument` will make. */
+export function renderSteps(parsed: ParsedIndex, plan: ExportPlan): number {
+	const entries = plan.chapters.flatMap((c) => c.entries).filter((e) => e.render).length;
+	return entries + (parsed.info.trim() ? 1 : 0) + (parsed.quotes?.markdown ? 1 : 0);
 }
 
 /** Table of contents / bookmarks tree, in the same order as the rendered document. */
@@ -71,6 +79,7 @@ export async function buildDocument(ctx: BuildContext, root: HTMLElement, outlin
 		const info = sourceSection(doc, INFO_ID, 'dope-section', ctx.index);
 		info.createEl('h1', { cls: 'dope-section-title', text: 'Presentazione' });
 		await render(ctx, ctx.parsed.info, info.createDiv(), ctx.index.path);
+		ctx.onRendered();
 	}
 
 	renderToc(doc, outline);
@@ -100,6 +109,7 @@ export async function buildDocument(ctx: BuildContext, root: HTMLElement, outlin
 		const section = sourceSection(doc, QUOTES_ID, 'dope-chapter', ctx.index);
 		section.createDiv('dope-chapter-header').createEl('h1', { cls: 'dope-chapter-title', text: quotes.title });
 		await render(ctx, quotes.markdown, section.createDiv(), ctx.index.path);
+		ctx.onRendered();
 	}
 
 	// Chromium only emits a PDF named destination for ids that some link points to.
@@ -125,6 +135,7 @@ async function renderEntry(ctx: BuildContext, parent: HTMLElement, entry: PlanEn
 	if (entry.file.extension === 'pdf') {
 		// Single placeholder page, replaced by the PDF pages after printing.
 		parent.createDiv({ cls: 'dope-pdf-slot', text: entry.title, attr: { id: entry.id } });
+		ctx.onRendered();
 		return;
 	}
 	const article = sourceSection(parent, entry.id, 'dope-note', entry.file);
@@ -134,6 +145,7 @@ async function renderEntry(ctx: BuildContext, parent: HTMLElement, entry: PlanEn
 	renderBanner(ctx.app, article, entry.file);
 	if (!/^\s*#\s/.test(body)) article.createEl('h1', { text: entry.title });
 	await render(ctx, body, article.createDiv(), entry.file.path);
+	ctx.onRendered();
 }
 
 function renderToc(doc: HTMLElement, outline: OutlineNode[]): void {
@@ -175,13 +187,10 @@ export function rewriteInternalLinks(app: App, root: HTMLElement, plan: ExportPl
 	});
 }
 
-/** Banner from the frontmatter used by the Banners plugin (`banner`, `banner_x`, `banner_y`). */
+/** Banner of the Banners plugin (`banner` frontmatter field), printed whole, without cropping. */
 function renderBanner(app: App, parent: HTMLElement, file: TFile): void {
-	const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-	const src = bannerSource(app, fm?.banner, file.path);
-	if (!src) return;
-	const img = parent.createDiv('dope-banner').createEl('img', { attr: { src } });
-	img.setCssStyles({ objectPosition: `${percent(fm?.banner_x)} ${percent(fm?.banner_y)}` });
+	const src = bannerSource(app, app.metadataCache.getFileCache(file)?.frontmatter?.banner, file.path);
+	if (src) parent.createDiv('dope-banner').createEl('img', { attr: { src } });
 }
 
 function bannerSource(app: App, value: unknown, sourcePath: string): string | null {
@@ -191,9 +200,4 @@ function bannerSource(app: App, value: unknown, sourcePath: string): string | nu
 	const link = /\[\[([^\]|#]+)/.exec(text)?.[1] ?? text;
 	const file = app.metadataCache.getFirstLinkpathDest(link.trim(), sourcePath);
 	return file ? app.vault.getResourcePath(file) : null;
-}
-
-function percent(value: unknown): string {
-	const n = typeof value === 'number' ? value : parseFloat(String(value));
-	return Number.isFinite(n) ? `${n * 100}%` : '50%';
 }

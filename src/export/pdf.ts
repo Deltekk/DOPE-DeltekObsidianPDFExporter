@@ -12,11 +12,17 @@ import {
 	PDFHexString,
 	PDFName,
 	PDFNumber,
+	PDFPage,
 	PDFRef,
 	StandardFonts,
+	fill,
+	popGraphicsState,
+	pushGraphicsState,
+	rectangle,
 	rgb,
+	setFillingRgbColor,
 } from 'pdf-lib';
-import type { OutlineNode } from '../types';
+import type { OutlineNode, PageColors, Rgb } from '../types';
 
 /** A linked PDF that replaces the single placeholder page with the same id. */
 export interface Attachment {
@@ -156,34 +162,55 @@ function addOutline(doc: PDFDocument, nodes: OutlineNode[]): void {
 	doc.catalog.set(PDFName.of('PageMode'), PDFName.of('UseOutlines'));
 }
 
-/** Draws page numbers, skipping the cover and the merged attachment pages. */
-async function addPageNumbers(doc: PDFDocument, skip: Set<string>): Promise<void> {
+/**
+ * Chromium paints the page background only inside the margins: fill the whole
+ * page with the theme background, underneath the existing content.
+ */
+function paintBackground(doc: PDFDocument, page: PDFPage, [r, g, b]: Rgb): void {
+	const { width, height } = page.getSize();
+	const stream = doc.context.contentStream([
+		pushGraphicsState(),
+		setFillingRgbColor(r, g, b),
+		rectangle(0, 0, width, height),
+		fill(),
+		popGraphicsState(),
+	]);
+	const ref = doc.context.register(stream);
+	const key = PDFName.of('Contents');
+	const contents = page.node.Contents();
+	if (contents instanceof PDFArray) contents.insert(0, ref);
+	else if (contents) page.node.set(key, doc.context.obj([ref, page.node.get(key)]));
+	else page.node.set(key, ref);
+}
+
+/** Paints backgrounds and page numbers, skipping the merged attachment pages; no number on the cover. */
+async function decoratePages(doc: PDFDocument, skip: Set<string>, colors: PageColors): Promise<void> {
 	const font = await doc.embedFont(StandardFonts.Helvetica);
 	const size = 9;
+	const color = rgb(...colors.foreground);
 	doc.getPages().forEach((page, i) => {
-		if (i === 0 || skip.has(page.ref.toString())) return;
+		if (skip.has(page.ref.toString())) return;
+		paintBackground(doc, page, colors.background);
+		if (i === 0) return;
 		const text = String(i + 1);
 		const width = font.widthOfTextAtSize(text, size);
-		page.drawText(text, {
-			x: (page.getWidth() - width) / 2,
-			y: 20,
-			size,
-			font,
-			color: rgb(0.4, 0.4, 0.4),
-		});
+		page.drawText(text, { x: (page.getWidth() - width) / 2, y: 20, size, font, color });
 	});
 }
+
+const DEFAULT_COLORS: PageColors = { background: [1, 1, 1], foreground: [0.4, 0.4, 0.4] };
 
 export async function finalizePdf(options: {
 	bytes: Uint8Array;
 	attachments: Attachment[];
 	outline: OutlineNode[];
 	title: string;
+	colors?: PageColors;
 }): Promise<Uint8Array> {
 	const doc = await PDFDocument.load(options.bytes);
 	const inserted = await insertAttachments(doc, options.attachments);
 	addOutline(doc, options.outline);
-	await addPageNumbers(doc, inserted);
+	await decoratePages(doc, inserted, options.colors ?? DEFAULT_COLORS);
 	doc.setTitle(options.title, { showInWindowTitleBar: true });
 	doc.setCreator('DOPE - Deltek Obsidian PDF Exporter');
 	return doc.save();

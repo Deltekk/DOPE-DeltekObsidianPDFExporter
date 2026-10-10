@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { extractLinks, parseIndex } from '../src/index-parser';
+import { cleanLabel, extractLinks, parseIndex } from '../src/index-parser';
+import { INDEX_TEMPLATE } from '../src/index-template';
 
 // Same structure as example/🐧 Sistemi Operativi/🐧 Sistemi Operativi.md
 const INDEX = `---
@@ -125,4 +126,25 @@ test('real Sistemi Operativi index', { skip: !existsSync(EXAMPLE) }, () => {
 		['Processi', 'Memoria', 'Thread', 'Regex', 'Awk', 'Scripting'],
 	);
 	assert.equal(quotes?.markdown.match(/\[!quote\]/gi)?.length, 20);
+});
+
+const markLabels = (markdown: string) =>
+	[...markdown.matchAll(/<mark style="([^"]+)">(.*?)<\/mark>/g)].map((m) => `${m[1]} ${cleanLabel(m[2] ?? '')}`);
+
+test('index template has the sections of the reference index and no links', () => {
+	const { info, chapters, quotes } = parseIndex(INDEX_TEMPLATE);
+	for (const label of ['Ricevimento', 'Materiale', 'Modalità esame', 'Argomenti prove', 'Appunti basati su', 'Informazioni']) {
+		assert.match(info, new RegExp(label));
+	}
+	assert.ok(chapters.every((c) => c.links.length === 0));
+	assert.deepEqual(quotes, { title: 'Citazioni', markdown: '' });
+});
+
+test('index template matches the Sistemi Operativi sections and colors', { skip: !existsSync(EXAMPLE) }, () => {
+	assert.deepEqual(markLabels(INDEX_TEMPLATE), markLabels(readFileSync(EXAMPLE, 'utf8')));
+});
+
+test('index template empty items are list items, not setext underlines', () => {
+	assert.ok(!/^-$/m.test(INDEX_TEMPLATE));
+	assert.equal(INDEX_TEMPLATE.match(/^- $/gm)?.length, 6);
 });

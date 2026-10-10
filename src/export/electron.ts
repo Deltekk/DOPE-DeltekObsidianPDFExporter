@@ -1,4 +1,4 @@
-/** Thin wrapper over the Electron APIs Obsidian exposes on desktop. */
+/** Thin wrapper over the Electron and Node APIs Obsidian exposes on desktop. */
 
 export interface PrintOptions {
 	pageSize: string;
@@ -11,10 +11,17 @@ interface Remote {
 		printToPDF(options: Record<string, unknown>): Promise<Uint8Array>;
 	};
 	dialog: {
-		showSaveDialog(options: Record<string, unknown>): Promise<{ canceled: boolean; filePath?: string }>;
+		showOpenDialog(options: Record<string, unknown>): Promise<{ canceled: boolean; filePaths: string[] }>;
 	};
 	shell: { openPath(path: string): Promise<string> };
 	nativeTheme: { themeSource: string };
+	app: { getPath(name: string): string };
+}
+
+interface NodeFs {
+	existsSync(path: string): boolean;
+	statSync(path: string): { isDirectory(): boolean };
+	promises: { writeFile(path: string, data: Uint8Array): Promise<void> };
 }
 
 type NodeRequire = (id: string) => unknown;
@@ -28,50 +35,61 @@ function remote(): Remote {
 	return electron.remote ?? (nodeRequire()('@electron/remote') as Remote);
 }
 
-export async function askSavePath(defaultName: string): Promise<string | null> {
-	const result = await remote().dialog.showSaveDialog({
-		defaultPath: defaultName,
-		filters: [{ name: 'PDF', extensions: ['pdf'] }],
-		properties: ['showOverwriteConfirmation'],
-	});
-	return result.canceled || !result.filePath ? null : result.filePath;
+function fs(): NodeFs {
+	return nodeRequire()('fs') as NodeFs;
 }
 
-/**
- * Prints the main window. Obsidian's print stylesheet only shows `body > .print`,
- * so the app itself is hidden. The light theme is applied only while printing,
- * so dark-theme colors do not end up on paper. With the "system" theme setting,
- * Obsidian re-applies the OS theme when printing starts, so the OS theme is
- * forced to light as well.
- */
-export async function printToPdf(options: PrintOptions): Promise<Uint8Array> {
-	const body = document.body;
-	const dark = body.hasClass('theme-dark');
-	const nativeTheme = remote().nativeTheme;
-	const themeSource = nativeTheme.themeSource;
-	nativeTheme.themeSource = 'light';
-	if (dark) body.removeClass('theme-dark');
-	body.addClass('theme-light');
+export async function chooseFolder(defaultPath: string): Promise<string | null> {
+	const result = await remote().dialog.showOpenDialog({
+		defaultPath,
+		properties: ['openDirectory', 'createDirectory'],
+	});
+	return result.canceled ? null : (result.filePaths[0] ?? null);
+}
+
+export function documentsFolder(): string {
+	return remote().app.getPath('documents');
+}
+
+export function joinPath(folder: string, name: string): string {
+	return (nodeRequire()('path') as { join(...parts: string[]): string }).join(folder, name);
+}
+
+export function isDirectory(path: string): boolean {
 	try {
-		const data = await remote().getCurrentWebContents().printToPDF({
-			pageSize: options.pageSize,
-			scale: options.scale,
-			printBackground: true,
-			margins: { top: 0.6, bottom: 0.7, left: 0.6, right: 0.6 },
-		});
-		return new Uint8Array(data);
-	} finally {
-		nativeTheme.themeSource = themeSource;
-		if (dark) {
-			body.removeClass('theme-light');
-			body.addClass('theme-dark');
-		}
+		return fs().statSync(path).isDirectory();
+	} catch {
+		return false;
 	}
 }
 
+export function fileExists(path: string): boolean {
+	return fs().existsSync(path);
+}
+
+/** Forces the OS theme seen by Obsidian; returns a function that restores it. */
+export function setNativeTheme(mode: 'light' | 'dark'): () => void {
+	const nativeTheme = remote().nativeTheme;
+	const previous = nativeTheme.themeSource;
+	nativeTheme.themeSource = mode;
+	return () => {
+		nativeTheme.themeSource = previous;
+	};
+}
+
+/** Prints the main window. Obsidian's print stylesheet only shows `body > .print`. */
+export async function printToPdf(options: PrintOptions): Promise<Uint8Array> {
+	const data = await remote().getCurrentWebContents().printToPDF({
+		pageSize: options.pageSize,
+		scale: options.scale,
+		printBackground: true,
+		margins: { top: 0.6, bottom: 0.7, left: 0.6, right: 0.6 },
+	});
+	return new Uint8Array(data);
+}
+
 export async function writeFile(path: string, data: Uint8Array): Promise<void> {
-	const fs = nodeRequire()('fs') as { promises: { writeFile(p: string, d: Uint8Array): Promise<void> } };
-	await fs.promises.writeFile(path, data);
+	await fs().promises.writeFile(path, data);
 }
 
 export async function openFile(path: string): Promise<void> {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PDFDict, PDFDocument, PDFHexString, PDFName } from 'pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFHexString, PDFName, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { finalPageNumbers, finalizePdf, readDestinations } from '../src/export/pdf';
 
 /** Mimics Chromium output: one page per id, plus a `/Dests` dictionary in the catalog. */
@@ -57,4 +57,23 @@ test('finalizePdf merges attachments, keeps destinations and adds bookmarks', as
 	assert.equal(second.lookup(PDFName.of('Title'), PDFHexString).decodeText(), '1. Kernel');
 	assert.equal(second.get(PDFName.of('Next')), undefined, 'entries without destination are dropped');
 	assert.equal(doc.getTitle(), 'Sistemi Operativi');
+});
+
+test('finalizePdf paints the page background underneath the content', async () => {
+	const result = await finalizePdf({
+		bytes: await chromiumLike(['cover', 'n1']),
+		attachments: [],
+		outline: [],
+		title: 'Dark',
+		colors: { background: [0.2, 0.4, 0.6], foreground: [1, 1, 1] },
+	});
+	const doc = await PDFDocument.load(result);
+	const contents = doc.getPage(1).node.Contents();
+	assert.ok(contents instanceof PDFArray);
+	const ops = contents
+		.asArray()
+		.map((ref) => new TextDecoder().decode(decodePDFRawStream(doc.context.lookup(ref) as PDFRawStream).decode()))
+		.join('\n');
+	// Only pdf-lib's graphics-state wrapper comes before the background.
+	assert.match(ops, /^q\s+q\s+0\.2 0\.4 0\.6 rg\s+0 0 595 842 re\s+f\s+Q/);
 });

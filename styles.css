@@ -31,7 +31,16 @@
 	--code-value: var(--color-purple);
 }
 
+/* Only the DOPE book is printed, even if other `.print` containers are in the page. */
+@media print {
+	body.dope-printing > .print:not(.dope-print) {
+		display: none !important;
+	}
+}
+
+/* Mermaid not allowed in the vault: print only the diagram source, not the prompt. */
 .dope-print .dope-anchors,
+.dope-print .mermaid-guard-header,
 .dope-print .copy-code-button,
 .dope-print .collapse-indicator,
 .dope-print .edit-block-button {
@@ -82,17 +91,16 @@
 	margin-top: 4em;
 }
 
+/* Banner: the whole original image, not cropped. */
 .dope-print .dope-banner {
-	height: 240px;
 	margin-bottom: 1.5em;
-	border-radius: 8px;
-	overflow: hidden;
 }
 
 .dope-print .dope-banner img {
+	display: block;
 	width: 100%;
-	height: 100%;
-	object-fit: cover;
+	height: auto;
+	border-radius: 8px;
 }
 
 /* Chapters and parts */
@@ -174,4 +182,33 @@
 
 .dope-print .dope-toc-depth-2 {
 	padding-left: 4.8em;
+}
+
+/* Export dialog */
+.dope-export-status {
+	min-height: 1.5em;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.dope-export-status.mod-warning {
+	color: var(--text-error);
+}
+
+.dope-progress-phase {
+	margin-bottom: 0.75em;
+}
+
+.dope-progress-info {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 0.75em;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Reads the export theme colors for the PDF margins and page numbers. */
+.dope-color-probe {
+	background-color: var(--background-primary);
+	color: var(--text-muted);
 }

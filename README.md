@@ -4,16 +4,28 @@ Esporta la nota "index" di una materia e tutte le note che collega in un unico P
 
 ## Uso
 
-Apri la nota index ed esegui il comando **DOPE PDF Exporter: Esporta index in PDF**, oppure fai clic destro sulla nota → **Esporta libro in PDF**. Si apre la finestra "Salva con nome": il PDF viene salvato lì, fuori dal vault.
+### Esportare
+
+Apri la nota index ed esegui il comando **DOPE PDF Exporter: Esporta index in PDF**, oppure fai clic destro sulla nota → **Esporta libro in PDF**. Nel menù che si apre scegli:
+
+- **Tema**: uno dei temi installati o quello predefinito di Obsidian;
+- **Modalità**: chiara o scura (in quella scura lo sfondo copre tutta la pagina);
+- **Cartella** (con **Sfoglia**) e **Nome file**.
+
+Le scelte vengono ricordate per l'export successivo. Il tema viene applicato solo durante la stampa: le impostazioni di aspetto non vengono modificate. Durante l'export il menù mostra la fase in corso, una barra di progresso in percentuale e il tempo stimato rimanente.
+
+### Inizializzare un nuovo index
+
+In una nota vuota esegui **DOPE PDF Exporter: Inizializza index materia**: vengono scritti il frontmatter e tutte le sezioni dell'index di riferimento (Ricevimento, Materiale, Modalità esame, Argomenti prove, Programma del corso, Esercizi / Esercitazioni, Appunti basati su, Informazioni, Citazioni). Su una nota non vuota il comando non fa nulla.
 
 ## Struttura del PDF
 
-1. **Copertina**: banner (`banner`, `banner_x`, `banner_y` del plugin Banners) e titolo dell'index.
+1. **Copertina**: banner (campo `banner` del plugin Banners, stampato per intero, senza ritagli) e titolo dell'index.
 2. **Presentazione**: le sezioni informative dell'index (Ricevimento, Materiale, Modalità esame, …).
 3. **Indice**: indice da libro con numeri di pagina, cliccabile.
 4. **Capitoli** del "Programma del corso", nell'ordine dell'index.
 5. **Appendici**: i link isolati fuori da un elenco (es. `[[Domande Sistemi Operativi]]`).
-6. **Esercitazioni**: i gruppi delle sezioni "Esercitazioni"/"Esercizi", sempre dopo i capitoli.
+6. **Esercitazioni**: i gruppi della sezione "Esercizi / Esercitazioni", sempre dopo i capitoli.
 7. **Citazioni**: la sezione `# Citazioni` dell'index.
 
 Il PDF ha anche i segnalibri (capitoli → note), i numeri di pagina e i link interni tra le note esportate.
@@ -29,7 +41,7 @@ Capitolo 1, **"Operating Systems"**:
 - [[Storia dei sistemi operativi]], [[Kernel]]
 - [[SO - Architettura Monolitica|Architettura Monolitica]]
 
-<mark style="...">Esercitazioni</mark>:
+<mark style="...">Esercizi / Esercitazioni</mark>:
 
 Processi:
 - [[SO - Processi - Esercizio 1]]
@@ -50,11 +62,17 @@ Processi:
 
 ## Compatibilità
 
-Le note sono renderizzate da Obsidian come in modalità lettura, quindi Excalidraw, Mermaid, LaTeX (MathJax), callout, Dataview e gli altri plugin che lavorano in modalità lettura funzionano come nell'app. La stampa usa sempre il tema chiaro, anche con il tema scuro attivo.
+Le note sono renderizzate da Obsidian come in modalità lettura, quindi Excalidraw, Mermaid, LaTeX (MathJax), callout, Dataview e gli altri plugin che lavorano in modalità lettura funzionano come nell'app. Durante la stampa l'app mostra per qualche secondo il tema scelto, poi torna a quello attuale.
+
+Da Obsidian 1.14 i diagrammi Mermaid vanno abilitati per ogni vault (**Impostazioni → Editor → Mostra i diagrammi Mermaid nelle note**). Se non lo sono, il menù di export mostra un pulsante **Abilita**, e nel PDF viene stampato il codice del diagramma al posto del diagramma.
+
+Il codice usa i colori predefiniti di Obsidian, perché alcuni temi (es. Dracula Gemini) li definiscono solo per lo sfondo scuro.
 
 I disegni Excalidraw mantengono il tema con cui sono salvati: un disegno scuro resta scuro nel PDF.
 
 ## Impostazioni
+
+Tema, cartella e nome si scelgono nel menù di export. Nelle impostazioni del plugin:
 
 - **Formato pagina**: A3, A4, A5, Letter, Legal.
 - **Scala di stampa**: dimensione del contenuto (predefinita 70%, come l'export nativo).
